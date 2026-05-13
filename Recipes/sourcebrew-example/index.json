@@ -1,0 +1,16 @@
+{
+    "sourcebrew_standard": "1.0",
+    "name": "sourcebrew-example",
+    "desc": "An example of a sourcebrew recipe",
+    "homepage": "https://example.com",
+    "type": "cmd",
+    "commands": {
+        "clone": "echo 'Cloning an example repository'",
+        "status": "echo 'Checking if there are changes to be pulled'",
+        "pull": "echo 'Pulling changes to the example repository'",
+        "build": "echo 'Building the code in the example repository'",
+        "clean": "echo 'Removing built files'"
+    },
+    "executables": ["example"],
+    "recipe_version": "1.0"
+}
