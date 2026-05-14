@@ -12,6 +12,7 @@ This section defines the standard for how recipes should be defined.
 
 - **Building:** Compiling or otherwise turning source code into an executable or other usable format.
 - **Package:** Software that gets built. This can be an application (command-line or desktop) or a library.
+- **Package Directory:** The directory where the source code for a package should be downloaded and built. Sourcebrew automatically creates a package directory for each installed package.
 
 ### Recipe Contents
 
@@ -66,7 +67,7 @@ Below are the fields in a recipe definition:
   - `"app"`: A desktop application, packaged in `.app` format.
   - `"lib"`: A code library *(full specification TBD)*.
 - `"recipe_install_command"` *(optional)*: A field to specify a command to run to install the recipe, if needed. If your recipe is programmed using a compiled language, this is where you would put the command to compile it.
-- `"commands"`: The distinct functions the recipe must implement for Sourebrew to manage the software. Read the [Recipe Commands](#recipe-commands) section for more details about implementation.
+- `"commands"`: The distinct functions the recipe must implement for Sourebrew to manage the software, specified as a bash command or executable. Read the [Recipe Commands](#recipe-commands) section for more details about implementation.
   - `"clone"`: Download the source code for the first time.
   - `"status"`: Find out if there are changes to the source code ready to be pulled. More details about the required format for responses can be found in the [Recipe Commands](#recipe-commands) section.
   - `"pull"` *(optional)*: Pull changes to the source code. If not specified, all pull operations will be performed by deleting the source code and cloning it again.
@@ -77,6 +78,57 @@ Below are the fields in a recipe definition:
 - `"recipe_version"`: The version number for the recipe.
 
 ### Recipe Commands
+
+While Sourcebrew can install built software on its own, it relies on recipes to define the instructions for building individual packages. *Commands* are the main method Sourcebrew uses to define these instructions. **Commands are the distinct functions recipes must implement for Sourebrew to manage the software**, and are used internally to complete Sourcebrew's subcommands.
+
+- `sourcebrew install` runs a recipe's `"clone"` and `"build"` commands, and then installs the resulting file(s).
+- `sourcebrew update` uses a recipe's `"status"` command to find out which packages can be upgraded.
+- `sourcebrew upgrade` runs a recipe's `"pull"` and `"build"` commands, and then re-installs the resulting file(s).
+- `sourcebrew cleanup` runs a recipe's `"clean"` command to make more disk space.
+
+When Sourcebrew runs the bash command or executable associated with each of a recipe's commands, it starts the command execution from the package's *package directory*. This, as stated in [Definitions](#definitions), is a directory created by Sourcebrew specifically to house the package's source code. **All commands should only modify files in the package directory**. Any external modifications (ex. installing executables to a directory in the PATH) are handled by Sourcebrew.
+
+In case any of the commands need to access files in the recipe directory, Sourcebrew guarantees that the environment variable `SOURCEBREW_RECIPE_DIR` will hold a path to the recipe directory upon command execution. Recipe maintainers are free to implement the commands listed in the [Recipe Definition](#recipe-definition) section however they like. `Recipes/sizeof` shows a simple, concrete example of command implementation. Here are some more details about the individual commands:
+
+`"clone"`:
+
+This command initially downloads the package source code to the package directory. This is best done with `git clone` so subsequent updates only need to pull changes rather than redownloading the entire source code repository, but other methods (`wget`, `curl`, etc.) may be used.
+
+`"status"`:
+
+This command checks if there are changes to the source code ready to be pulled and whether they are significant enough to warrant an upgrade. When Sourcebrew runs its `update` subcommand, it checks each recipe's `"status"` command to see if an upgrade is available.
+
+Determining when to upgrade a package from the source code is complicated because, unlike a typical package manager, source code does not have distinct version numbers. Without version numbers it's unclear whether the new commits to a package's source code are significant enough to constitute a new version and, therefore, an upgrade. With that in mind, here are a few alternate ways recipes could determine if an upgrade is available, though implementation choices are ultimately up to the recipe maintainers:
+
+1. **Every new commit is a new available upgrade**. For small packages with infrequent commits this can be a fine solution, but it's generally a bad idea for any packages with more than one new commit every few days, since it will lead to constant upgrades available and constant rebuilding.
+2. **Upgrades are available some specific amount of time after the last build**. This is a rough but good-enough technique for most packages. There can be any number of new commits to a package's source code, but upgrades are only considered available after some amount of time has passed since the last build. The amount of time can be different for each package; A web browser might be upgradable every few weeks, but a text editor might only be upgradable every few months. See [Recipe Utilities](#recipe-utilities) for information on the `SOURCEBREW_TIME_SINCE_LAST_BUILD` and `SOURCEBREW_LAST_BUILD_TIME` environment variables that make this implementation possible.
+3. **Upgrades are available after the version number changes**. This solution requires fetching the version number from somewhere, likely a website, and comparing it to a stored version number. This can be complicated to implement, but is the best solution because it mostly matches Sourcebrew's upgrade time to the pre-build package's upgrade time. If the version number is present in the source code then the recipe can pull changes to check the version number, but recipe maintainers should be cautious to do this for large codebases because the `"status"` command should be quick to run.
+
+Regardless of the method used to check upgradability, the response format for the `"status"` command is the same. A `json` document must be printed to `stdout` with the following format:
+
+```json
+{
+    "commits_available": [true or false],
+    "upgrade_available": [true or false]
+}
+```
+
+- `"commits_available"` should be `true` if there are any commits available to pull, regardless of upgrade availability.
+- `"upgrade_available"` should be `true` if the recipe has decided, based on its own methodology, that an upgrade is available for the package.
+
+`"pull"`:
+
+This command pulls changes to the package source code. This is best done with `git pull`, since this can keep any changes users have mads. If the recipe's `"pull"` implementation involves redownloading the whole package source code repository then you can leave this command unimplemented, Sourcebrew will just run the recipe's `"clone"` command instead.
+
+If the recipe uses method 3 in the `"status"` command to check upgrade availability *and* it's possible to determine the hash of the commit which generated the most recent version then this command should check out that commit. This ensures that the resulting build uses the exact same source code as the pre-built package, which is great for stability.
+
+`"build"`:
+
+This command builds the source code but does not install it. Sourcebrew handles all the installation itself so that it can ensure all files are properly managed, though the `"executables"` or `"apps"` fields are required to do this.
+
+`"clean"`:
+
+This command exists mainly to clear disk space. If there are any files generated by the `"build"` command which can be safely removed, this command should remove them. Sourcebrew copies any executables or applications for installation, so removing these files is generally safe.
 
 ### Recipe Install Commands
 
