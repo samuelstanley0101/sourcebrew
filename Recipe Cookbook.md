@@ -150,6 +150,17 @@ Sourcebrew offers certain subcommands and environment variables to make recipe c
 
 Sourcebrew guarantees that the following environment variables will be available for every recipe command execution:
 
-- `SOURCEBREW_RECIPE_DIR`: A path to the recipe directory.
+- `SOURCEBREW_PACKAGE_DIR`: An absolute path to the package directory.
+- `SOURCEBREW_RECIPE_DIR`: An absolute path to the recipe directory.
 - `SOURCEBREW_TIME_SINCE_LAST_BUILD`: The amount of time since the last successful build. *Format TBD.*
 - `SOURCEBREW_LAST_BUILD_TIME`: The time, in the current time zone, that the last successful build occurred. *Format TBD.*
+
+### Subcommands
+
+Sourcebrew offers several subcommands which may be helpful for implementing recipe commands. All the subcommands are available during recipe command execution with the `sourcebrew-utils [subcommand]` Bash command.
+
+*The typical `sourcebrew` Bash command is intentionally made unavailable during recipe command execution to avoid recursive calls.*
+
+- `commits-available [repository]`: Checks if a given Git repository has commits available to be fetched from the remote.
+  - `repository`: A path to a local copy of a repository.
+  - **Returns:** `"true"` if there are commits available and `"false"` if not.
