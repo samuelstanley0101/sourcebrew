@@ -13,6 +13,8 @@ This section defines the standard for how recipes should be defined.
 - **Building:** Compiling or otherwise turning source code into an executable or other usable format.
 - **Package:** Software that gets built. This can be an application (command-line or desktop) or a library.
 - **Package Directory:** The directory where the source code for a package should be downloaded and built. Sourcebrew automatically creates a package directory for each installed package.
+- **Recipe:** A set of instructions for building, installing, and managing a package.
+- **Recipe Directory:** The directory where a recipe is defined. This is where the recipe's `index.json` file is located.
 
 ### Recipe Contents
 
@@ -132,6 +134,8 @@ This command exists mainly to clear disk space. If there are any files generated
 
 ### Recipe Install Commands
 
+*To be implemented in standard version 1.1.*
+
 In case a package *must* perform some custom actions during installation, Sourcebrew offers a few additional commands recipes can implement. Please use the `pre_install` and `post_install` commands over the `custom_install` command whenever possible.
 
 - `"pre_install"` *(optional)*: A command to run before installation. Most recipes don't need this.
@@ -140,4 +144,12 @@ In case a package *must* perform some custom actions during installation, Source
 
 ## Recipe Utilities
 
-*TBD.*
+Sourcebrew offers certain subcommands and environment variables to make recipe commands easier to implement.
+
+### Environment Variables
+
+Sourcebrew guarantees that the following environment variables will be available for every recipe command execution:
+
+- `SOURCEBREW_RECIPE_DIR`: A path to the recipe directory.
+- `SOURCEBREW_TIME_SINCE_LAST_BUILD`: The amount of time since the last successful build. *Format TBD.*
+- `SOURCEBREW_LAST_BUILD_TIME`: The time, in the current time zone, that the last successful build occurred. *Format TBD.*
