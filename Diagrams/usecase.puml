@@ -1,0 +1,30 @@
+@startuml usecase
+left to right direction
+
+actor :User: as User
+
+usecase (Install\nPackage) as Install
+usecase (Update\nSourcebrew) as Update
+usecase (Upgrade\nPackage) as Upgrade
+usecase (Uninstall\nPackage) as Uninstall
+usecase (List Installed\nPackages) as List
+usecase (Help) as Help
+
+usecase (Read Package\nDatabase) as Read
+usecase (Write to Package\nDatabase) as Write
+
+User      --> Install
+User      --> Update
+User      --> Upgrade
+User      --> Uninstall
+User      --> List
+User      --> Help
+
+Install   --> Write
+Update    --> Read
+Upgrade   --> Read
+Upgrade   --> Write
+Uninstall --> Read
+Uninstall --> Write
+List      --> Read
+@enduml
